@@ -7,7 +7,9 @@ from collections import deque
 
 np.seterr(divide='ignore')
 
-### random variables
+######################
+#  random variables  #
+######################
 
 # a finite random variable is specified by a pmf
 
@@ -30,7 +32,9 @@ class FiniteRandomVariable(object):
     def sample(self,N=1):
         return choice(self.support(),N,p=self._pmf.values())
 
-### entropy and relative entropy of random variables
+######################################################
+#  entropy and relative entropy of random variables  #
+######################################################
 
 def H(X):
     p = X.pmf
@@ -40,7 +44,11 @@ def D(X,Y):
     p,q = X.pmf, Y.pmf
     return sum(p(x) * (log2(p(x)) - log2(q(x))) for x in X.support())
 
-### processes
+###############
+#  processes  #
+###############
+
+# processes have entropy rates
 
 def H_rate(process):
     return process.H_rate()
@@ -78,7 +86,5 @@ class MarkovProcess(object):
 
     def H_rate(self):
         P = np.where(self._P != 0, self._P, 1)
-        print P
         return -self._pi.dot(self._P * log2(P)).sum()
-
 
