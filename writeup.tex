@@ -1,0 +1,309 @@
+\documentclass{article}
+
+\RequirePackage[top=1.2in,bottom=1.2in,left=1.5in,right=1.5in]{geometry}
+\RequirePackage{subcaption}
+\RequirePackage[labelfont=bf]{caption}
+\RequirePackage{float}
+
+\RequirePackage{amsmath,amsfonts,amssymb,amsthm}
+\RequirePackage{algorithm}
+\RequirePackage[noend]{algpseudocode}
+\RequirePackage{graphicx}
+\RequirePackage[margin=0.5in]{caption}
+\RequirePackage[colorlinks=true]{hyperref}
+\RequirePackage{appendix}
+\RequirePackage{url}
+\usepackage{mathtools}
+\mathtoolsset{showonlyrefs=true}
+
+\usepackage[style=authoryear-comp,
+            uniquelist=false,
+            maxnames=1,
+            maxbibnames=5,
+            backend=biber,
+            url=true,
+            doi=true,
+            natbib=true,
+            eprint=true]{biblatex}
+\addbibresource{bib.bib}
+
+\newtheorem{claim}{Claim}
+\newtheorem{mydef}{Definition}
+\newtheorem{myex}{Example}
+\DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
+\DeclareMathOperator{\Tr}{Tr}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\T}{\mathsf{T}}
+\newcommand{\N}{\mathcal{N}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\thepartition}{\mathcal{P}}
+\newcommand{\iid}[1]{\stackrel{\text{iid}}{#1}}
+\newcommand{\indices}{\mathcal{I}}
+\newcommand\indep{\protect\mathpalette{\protect\independenT}{\perp}}
+\def\independenT#1#2{\mathrel{\rlap{$#1#2$}\mkern4mu{#1#2}}}
+\makeatletter
+\let\oldabs\abs
+\def\abs{\@ifstar{\oldabs}{\oldabs*}}
+\let\oldnorm\norm
+\def\norm{\@ifstar{\oldnorm}{\oldnorm*}}
+\makeatother
+
+\begin{document}
+    \begin{center}
+        \Large
+        Information Theory for Probabilistic Modeling\\
+        \vspace{0.2in}
+        \normalsize
+        Matthew James Johnson, MIT\\
+        \vspace{0.1in}
+        \footnotesize
+        Revised \today
+    \end{center}
+
+    \section{Outline}
+
+    The aim of this document is to formalize and substantiate these claims:
+
+    \begin{enumerate}
+        \item entropy is the compressibility of a discrete iid
+            source, and entropy rate is the
+            compressibility of a discrete stationary process
+            (Section~\ref{sec:entropy} here, Chapters 2,4, and 5 in C\&T);
+        \item predictive likelihood on data is a model's ability to compress
+            that data (Section~\ref{sec:predictive-likelihood});
+        \item continuous (differential) entropy loses some direct
+            interpretations, though it allows relative comparisons
+            (Section~\ref{sec:differential-entropy} here, Chapter 8 in C\&T); and
+        \item any probabilistic model that can predict can be made into a code
+            (compression scheme), though you can skip the model-fitting step if
+            you don't want to make predictions or interpret the model
+            (Section~\ref{sec:coding} here, Chapters 5 and 13 in C\&T).
+    \end{enumerate}
+
+    Wherever possible, there are citations to sections, theorems, and examples
+    from \citet{cover2006elements}, referenced as C\&T, which is the
+    standard text on information theory. Proofs are shown here only when
+    they're actually enlightening.
+
+    \section{Entropy}% measures compressibility of a probabilistic model}
+    \label{sec:entropy}
+    The entropy of a discrete random variable is a non-negative number that
+    depends on the random variable's distribution. It is zero iff the random
+    variable is deterministic, and it is larger when the random variable is
+    more unpredictable.
+
+    \begin{mydef}[Entropy, C\&T Section 2.1]
+        For a random variable $X$ taking values in $\mathcal{X}$ with pmf $p$,
+        the \emph{entropy} of $X$ is
+        \begin{align}
+            H(X) := - \sum_{x \in \mathcal{X}} p(x) \log p(x) = \E_{x \sim p}[- \log p(x) ] \label{eq:entropy}% \\
+            % H[X|Y] := - \E_{X,Y} \log p(X|Y)
+        \end{align}
+        with the convention that $0 \log 0 = 0$ and that $\log=\log_2$
+        unless otherwise specified. Sometimes we write $H(p)$ for $H(X)$ when
+        $X \sim p$.
+    \end{mydef}
+
+    See C\&T Example 2.1.1 and Figure 2.1. Chapter 2 is all about entropy.
+
+    When the log in Eq.~\eqref{eq:entropy} is base 2, the units are \emph{bits}
+    as motivated by the connection to compression described next.
+
+    When a random variable takes values in a discrete set $\mathcal{X}$, one
+    can encode samples of the random variable using $\ceil{\log |\mathcal{X}|}$
+    bits per sample, but when a random variable is predictable it may be
+    possible to use fewer bits: one could assign short descriptions to frequent
+    symbols and longer descriptions for infrequent symbols, like in Morse Code.
+    The next two claims show that entropy of a random variable essentially
+    equals the average number of bits required to encode its samples.
+
+    First, for any encoding\footnote{This argument only applies to prefix
+        codes, but by the Asymptotic Equipartition Property
+        (C\&T Chapter 3) the story is the same for all
+        codes.} of the symbols of $\mathcal{X}$ as bit strings, the entropy
+    $H(X)$ lower-bounds the average bit string length.
+
+    \begin{claim}[Entropy lower-bounds average codeword length, Thm 5.3.1]
+         If $\ell_i$ is the bit string length for encoding $x_i$ and $L(x_i) =
+         \ell_i$, then
+        \begin{align}
+            H(X) \leq \E[L(X)].
+        \end{align}
+    \end{claim}
+    \begin{proof}
+        The key idea is to think of symbols' bit string lengths as
+        corresponding to a probability distribution for which they are optimal
+        codes; that is, think of a new probability mass function $q$ with
+        \begin{align}
+            q_i \propto 2^{-\ell_i}, \text{~i.e.~} q(x_i) :=
+            \frac{e^{-\ell_i}}{C} \text{~where~} C := \sum_j 2^{-\ell_j}
+        \end{align}
+        so that $\ell_i = -\log q_i + \log C$. Then comparing a code's average
+        length can be rewritten as comparing two probability distributions by
+        substituting for $\ell_i$:
+        \begin{align}
+            \E[L(X)] - H(X) &= \sum_i p_i \ell_i + \sum_i p_i \log p_i \label{eq:expected-length} \\
+            &= \sum_i p_i \log p_i - \sum_i p_i \log q_i + \log C \label{eq:length-and-predictive} \\
+            &= \underbrace{\sum_i p_i \log \frac{p_i}{q_i}}_{D(p || q)} +  \log C \label{eq:kl-extra-bits} \\
+            &\geq 0
+        \end{align}
+        Where $D(p||q) \geq 0$ is known as Gibbs' inequality (proved by $x-1
+        \geq \ln x$) and $\log C \geq 0$ is from the Kraft inequality
+        C\&T Section 5.2 (proved by tree representation of prefix codes).
+    \end{proof}
+
+    Note that $D(p||q)$ is a pseudometric between distributions, so that it is
+    zero iff $p=q$ almost everywhere and positive otherwise; therefore
+    Eq.~\eqref{eq:kl-extra-bits} hints that choosing a code for a distribution
+    $q$ instead of the true distribution $p$ incurs a compression cost of
+    $D(p||q)$ bits per symbol. For optimal codes, $C$ asymptotically goes to
+    $1$ so the $\log C$ term goes to zero. (See C\&T Thm 5.4.3.)
+
+    The previous claim shows that entropy tells us the best bits per symbol we
+    can hope for; the next claim shows that it's not too hard to get within one
+    bit per symbol of that limit.
+
+    \begin{claim}[Average coded symbol length can be within one bit of entropy, Theorem 5.4.1]
+        It's not hard to choose $L$ so that
+        \begin{align}
+            \E[L(X)] \leq H(X) + 1
+        \end{align}
+    \end{claim}
+    \begin{proof}
+        By choosing\footnote{Always possible by reversing the argument in the
+            Kraft inequality proof C\&T Section 5.2}
+        $\ell_i = \ceil{\log \frac{1}{p_i}}$ we get an average length of
+        \begin{align}
+            \E[L(X)] &= \sum_i p_i \ceil{\log \frac{1}{p_i}}\\
+            &\leq \sum_i p_i \left( - \log \frac{1}{p_i} + 1 \right)\\
+            &= - \sum_i p_i \log p_i + 1 \\
+            &= \ H(X)+1
+        \end{align}
+        and an optimal code can only do better (C\&T Section 5.4).
+    \end{proof}
+
+    The discussion so far has been about compressing a stream of independent
+    samples from some probability distribution, but the same story holds for
+    streams where the symbols are dependent. In particular, for streams that
+    are stationary stochastic processes (like Markov chains or, pretty much
+    generally, hidden Markov models). The key is to measure then \emph{entropy
+    rate} of the process, which reduces to entropy in the independent case.
+
+    \begin{mydef}[Entropy rate, C\&T Section 4.2]
+        The \emph{entropy rate} of a stochastic process $X=(X_i)$ is
+        \begin{align}
+            H(X) &:= \lim_{n \to \infty} \frac{1}{n} H(X_1, X_2, \ldots, X_n)\\
+            &= \lim_{n \to \infty} H(X_n | X_{n-1}, \ldots, X_1)
+        \end{align}
+        where the second equality only holds for stationary processes.
+    \end{mydef}
+
+    For a Markov chain with invariant distribution $\mu$ and transition
+    probabilities $P$, the entropy rate is $\sum_{ij} \mu_i P_{ij} \log
+    P_{ij}$.
+
+    \paragraph{See also} Entropy is discussed in Chapter 2, and the
+    Asymptotic Equipartition Property in Chapter 3 gives the most thorough
+    characterization of entropy and compression. Chapter 4 is all about entropy
+    rates of stochastic processes, and Chapter 5 is about data compression.
+    Algorithms for constructing optimal codes for a probability model are
+    discussed in Section~\ref{sec:coding} of these notes.
+
+    \section{Predictive likelihood}% measures a model's ability to compress data}
+    \label{sec:predictive-likelihood}
+    Given a probabilistic model (that we may have fit given some training
+    data), it is natural to score the model's ability to predict new data by
+    evaluating the average likelihood the model assigns to held-out test data.
+    To analyze that procedure in a probabilistic framework, we imagine that test
+    data are generated from a true underlying distribution $p$, and we wish to
+    evaluate the average predictive log likelihood that some fit model $q$ assigns
+    to that data.
+
+    \begin{mydef}[Predictive log likelihood]
+        The predictive likelihood of $q$ on test data generated iid from $p$ is
+        \begin{align}
+            \E_p [ \log q(X) ] = \sum_x p(x) \log q(x).
+        \end{align}
+    \end{mydef}
+
+    The same term already arose in Eq.~\eqref{eq:length-and-predictive} in the
+    expression for average string length. In fact, the average codeword length
+    is precisely related to the predictive log likelihood, as shown in the next claim.
+
+    \begin{claim}[Predictive log likelihood is a model's ability to compress]
+        The average asymptotic codeword length when applying an optimal code
+        designed for $q$ to data generated by $p$ satisfies
+        \begin{align}
+            \E_p [L_q(X)] = - \sum_{x \in \mathcal{X}} p(x) \log q(x)
+        \end{align}
+    \end{claim}
+    \begin{proof}
+        Starting from Eq.~\eqref{eq:expected-length},
+        \begin{align}
+            \E_p [ L_q(X) ] &= H(p) + D(p||q) \\
+            &= - \sum_i p_i \log p_i + \sum_i p_i \log p_i - \sum_i p_i \log q_i \\
+            &= - \sum_{x \in \mathcal{X}} p(x) \log q(x).
+        \end{align}
+        See C\&T Thm 5.4.3 for a similar proof.
+    \end{proof}
+
+    For stationary stochastic processes, we instead evaluate $\lim_{n \to
+        \infty} \E_p \log q(X_n | X_{n-1}, \ldots, X_1)$.
+
+    \paragraph{See also} \citet{mackay2003information}[Chapter 28].
+
+    \section{Entropy of continuous-valued processes}
+    \label{sec:differential-entropy}
+    Entropy for continuous-valued random variables and processes is easy to
+    define but it loses some of the nice interpretation with regards to
+    compressibility.
+
+    \begin{mydef}[Differential entropy, C\&T Section 8.1]
+        For a random variable $X$ taking values in $\mathcal{X}$ with
+        probability density function $f$, the \emph{differential entropy} of
+        $X$ is
+        \begin{align}
+            h(X) := - \int_{x \in \mathcal{X}} f(x) \log f(x) dx
+        \end{align}
+    \end{mydef}
+
+    \begin{myex}[Uniform distribution, C\&T 8.1.1]
+        If $X$ is uniform on $[0,a]$ then its density is $1/a$ from $0$ to $a$
+        and 0 elsewhere, so
+        \begin{align}
+            h(X) = -\int_0^a \frac{1}{a} \log \frac{1}{a} dx = \log a.
+        \end{align}
+        If $a<1$, then $h(X) < 0$.
+    \end{myex}
+
+    Since differential entropy can be negative, it can't immediately be
+    interpreted as a number of bits per sample (and to encode a
+    continuous-valued sample it would take an infinite number of bits anyway).
+
+    \begin{claim}[Interpretation of differential entropy, C\&T Thm 8.3.1]
+        An $n$-bit quantization of $X$ has entropy (and optimal average
+        codeword length) $h(X)+n$.
+    \end{claim}
+
+    However, the definition of an $n$-bit quantization changes if we change the
+    units in which $X$ is measured; that is, differential entropy is invariant
+    only to rigid transformations. For distributions over ``features'' which
+    have no natural units, that destroys the interpretability of differential
+    entropy.
+
+    Fortunately, relative entropy $D(f||g)$ maintains all of its good
+    properties from the discrete case: it is always non-negative and it is
+    invariant to all (measurable) transformations, including changing units and
+    scales. In the context of predictive log likelihoods (as in
+    Section~\ref{sec:predictive-likelihood}), that corresponds exactly to
+    comparing \emph{differences} of predictive log likelihoods.
+
+    \section{Constructing codes}
+    \label{sec:coding}
+    Todo: model-based entropy coding with Huffman and arithmetic codes,
+    model-free coding with Lempel-Ziv.
+
+    \printbibliography
+
+\end{document}
+
