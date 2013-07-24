@@ -4,8 +4,9 @@ from numpy import log2, ceil
 import abc
 from collections import defaultdict, OrderedDict
 from heapq import heappush, heappop, heapify
-from itertools import izip, izip_longest, tee
+from itertools import izip, izip_longest, imap, tee
 
+import util
 from prob import FiniteRandomVariable
 
 ##########
@@ -14,7 +15,7 @@ from prob import FiniteRandomVariable
 
 def blockify(seq,blocklen,fill=None):
     args = [iter(seq)]*blocklen
-    return izip_longest(*args,fillvalue=fill)
+    return imap(''.join, izip_longest(*args,fillvalue=fill))
 
 def huffman(X):
     p = X.pmf
@@ -60,36 +61,41 @@ class ModelBasedCode(Code):
 
     @classmethod
     def fit_and_compress(cls,seq,blocklen=1):
-        seq = list(blockify(seq,blocklen))
+        if blocklen != 1:
+            seq = list(blockify(seq,blocklen))
+
         code = cls.fit(seq)
-        result = ''.join(code.compress(seq))
+        compressed = ''.join(code.compress(seq))
+        decompressed = ''.join(code.decompress(compressed))
+
+        assert decompressed == ''.join(seq)
 
         print code
 
         N = len(seq)
         bits_per_input_symbol = ceil(log2(len(set(seq))))
         inbits = N*bits_per_input_symbol
-        outbits = len(result)
+        outbits = len(compressed)
         print '\n%s with block length %d achieved compression rate: %gx\n    (%g bits per raw symbol, %g compressed bits per symbol)\n' \
                 % (cls.__name__, blocklen, outbits/inbits,
                         bits_per_input_symbol, outbits/N)
 
-        return result
+        return compressed
 
 # an iid code is backed by an iid random variable model and a codebook
 
 class IIDCode(ModelBasedCode):
     def __init__(self,codebook):
-        self._codebook = codebook
-        self._inv_codebook = {v:k for k,v in codebook.iteritems()}
+        self.codebook = codebook
+        self.inv_codebook = {v:k for k,v in codebook.iteritems()}
 
     def compress(self,seq):
-        return ''.join(self._codebook[s] for s in seq)
+        return ''.join(self.codebook[s] for s in seq)
 
     def decompress(self,bits):
         bits = iter(bits)
         while True:
-            yield self.consume_next(self._inv_codebook,bits)
+            yield self.consume_next(self.inv_codebook,bits)
 
     @staticmethod
     def consume_next(inv_codebook,bits):
@@ -99,10 +105,13 @@ class IIDCode(ModelBasedCode):
             bitbuf += bit
             if bitbuf in inv_codebook:
                 return inv_codebook[bitbuf]
+        assert len(bitbuf) == 0
+        raise StopIteration
 
     def __repr__(self):
-        return '\n'.join('%s -> %s' % (symbol, code)
-                for symbol, code in self._codebook.iteritems())
+        return self.__class__.__name__ + '\n' + \
+                '\n'.join('%s -> %s' % (symbol, code)
+                        for symbol, code in self.codebook.iteritems())
 
     @classmethod
     def fit(cls,seq):
@@ -125,34 +134,30 @@ class IIDCode(ModelBasedCode):
 
 # a Markov code is backed by a Markov chain model and for each symbol it has a
 # separate codebook to encode the next symbol
-# TODO test all this
-# TODO pass in alphabet to estimation methods
 
 class MarkovCode(ModelBasedCode):
-    def __init__(self,codebooks):
-        # TODO just map symbol to IIDCode?
-        self._codebooks = codebooks # dict of codebooks, indexed by alphabet
-        self._firstcodebook = codebooks.values()[0] # convention
-        self._inv_firstcodebook = {v:k for k,v in self._firstcodebook.iteritems()}
-        self._inv_codebooks = {symbol:{v:k for k,v in codebook.iteritems()}
-                for symbol,codebook in codebooks.iteritems()}
+    def __init__(self,firstcodebook,codebooks):
+        self.firstcode = IIDCode(firstcodebook)
+        self.iid_codes = {symbol:IIDCode(codebook)
+                for symbol, codebook in codebooks.iteritems()}
 
     def compress(self,seq):
         s1, s2 = tee(seq,2)
         firstsymbol = next(s2)
-        return self._firstcodebook[firstsymbol] + \
-                ''.join(self._codebooks[a][b] for a, b in izip(s1,s2))
+        return self.firstcode.codebook[firstsymbol] + \
+                ''.join(self.iid_codes[a].codebook[b] for a, b in izip(s1,s2))
 
     def decompress(self,bits):
         bits = iter(bits)
-        symbol = IIDCode.consume_next(self._firstcodebook,bits)
+        symbol = IIDCode.consume_next(self.firstcode.inv_codebook,bits)
         while True:
             yield symbol
-            symbol = IIDCode.consume_next(self._inv_codebooks[symbol],bits)
+            symbol = IIDCode.consume_next(self.iid_codes[symbol].inv_codebook,bits)
 
     def __repr__(self):
-        return '\n'.join('%s -> %s' % (symbol, code)
-                for symbol, code in self._codebook.iteritems())
+        return self.__class__.__name__ + '\n' + \
+                '\n'.join('Code after seeing %s:\n%s' % (symbol,iidcode)
+                        for symbol, iidcode in self.iid_codes.iteritems())
 
     @classmethod
     def fit(cls,seq):
@@ -160,8 +165,9 @@ class MarkovCode(ModelBasedCode):
         return cls.from_markovchain(model)
 
     @classmethod
-    def from_markovchain(cls,(symbols,P)):
-        return cls({s:huffman(FiniteRandomVariable(dict(zip(symbols,dist))))
+    def from_markovchain(cls,(symbols,pi,P)):
+        return cls(huffman(FiniteRandomVariable(dict(zip(symbols,pi)))),
+                {s:huffman(FiniteRandomVariable(dict(zip(symbols,dist))))
             for s,dist in zip(symbols,P)})
 
     @staticmethod
@@ -174,8 +180,11 @@ class MarkovCode(ModelBasedCode):
             counts[a][b] += 1
             tots[a] += 1
         symbols = counts.keys()
-        return (symbols, np.array([[counts[i][j]/tots[i] for j in symbols] for i in symbols]))
+        P = np.array([[counts[i][j]/tots[i] for j in symbols] for i in symbols])
+        pi = util.steady_state(P)
+        return (symbols, pi, P)
 
 # TODO arithemetic codes: separate the model from the coding mechanism
-# TDOO lempel-ziv
+# TODO lempel-ziv
 
+# TODO more streams everywhere

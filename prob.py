@@ -2,11 +2,10 @@ from __future__ import division
 import numpy as np
 from numpy import log2
 from numpy.random import choice
-from numpy.linalg import eig
 import abc
 from collections import deque
 
-np.seterr(divide='ignore')
+import util
 
 ######################
 #  random variables  #
@@ -81,10 +80,7 @@ class MarkovProcess(object):
         self._symbols = symbols
         self._numstates = len(symbols)
         self._P = np.asarray(trans)
-
-        evals, evecs = eig(self._P.T)
-        self._pi = evecs[:,np.abs(evals).argmax()]
-        self._pi /= self._pi.sum()
+        self._pi = util.steady_state(self._P)
 
     def generate_sequence(self,N):
         out = deque()
@@ -96,5 +92,8 @@ class MarkovProcess(object):
 
     def H_rate(self):
         P = np.where(self._P != 0, self._P, 1)
-        return -self._pi.dot(self._P * log2(P)).sum()
+        errs = np.seterr(divide='ignore')
+        out = -self._pi.dot(self._P * log2(P)).sum()
+        np.seterr(**errs)
+        return out
 
