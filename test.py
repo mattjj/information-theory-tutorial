@@ -16,6 +16,7 @@ print 'true entropy rate: %g\n' % H_rate(process)
 seq = process.generate_sequence(10000)
 IIDCode.fit_and_compress(seq,blocklen=1)
 IIDCode.fit_and_compress(seq,blocklen=2)
+MarkovCode.fit_and_compress(seq)
 
 # TODO show coding with the wrong source model and its relationship to KL
 # and predictive likelihood

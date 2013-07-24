@@ -128,19 +128,20 @@ class IIDCode(ModelBasedCode):
 # TODO test all this
 # TODO pass in alphabet to estimation methods
 
-class MarkovCode(object):
+class MarkovCode(ModelBasedCode):
     def __init__(self,codebooks):
+        # TODO just map symbol to IIDCode?
         self._codebooks = codebooks # dict of codebooks, indexed by alphabet
-        self._firstcodebook = codebooks.items()[0] # convention
+        self._firstcodebook = codebooks.values()[0] # convention
         self._inv_firstcodebook = {v:k for k,v in self._firstcodebook.iteritems()}
-        self._inv_codebooks = {v:{vv:kk for kk,vv in v.iteritems()}
-                for k,v in codebooks.iteritems()}
+        self._inv_codebooks = {symbol:{v:k for k,v in codebook.iteritems()}
+                for symbol,codebook in codebooks.iteritems()}
 
     def compress(self,seq):
-        seq1, seq2 = tee(seq,2)
-        firstsymbol = next(seq2)
+        s1, s2 = tee(seq,2)
+        firstsymbol = next(s2)
         return self._firstcodebook[firstsymbol] + \
-                ''.join(self._codebooks[s1][s2] for s1, s2 in izip(seq1,seq2))
+                ''.join(self._codebooks[a][b] for a, b in izip(s1,s2))
 
     def decompress(self,bits):
         bits = iter(bits)
@@ -149,6 +150,10 @@ class MarkovCode(object):
             yield symbol
             symbol = IIDCode.consume_next(self._inv_codebooks[symbol],bits)
 
+    def __repr__(self):
+        return '\n'.join('%s -> %s' % (symbol, code)
+                for symbol, code in self._codebook.iteritems())
+
     @classmethod
     def fit(cls,seq):
         model = cls.estimate_markov_source(seq)
@@ -156,20 +161,21 @@ class MarkovCode(object):
 
     @classmethod
     def from_markovchain(cls,(symbols,P)):
-        return cls({s:huffman(FiniteRandomVariable(dict(*zip(symbols,dist))))
+        return cls({s:huffman(FiniteRandomVariable(dict(zip(symbols,dist))))
             for s,dist in zip(symbols,P)})
 
     @staticmethod
     def estimate_markov_source(seq):
+        s1, s2 = tee(seq,2)
+        next(s2)
         counts = defaultdict(lambda: defaultdict(int))
         tots = defaultdict(int)
-        s1, s2 = tee(seq,2)
-        _ = next(s2)
         for a,b in izip(s1,s2):
-            counts[s1][s2] += 1
-            tots[s1] += 1
+            counts[a][b] += 1
+            tots[a] += 1
         symbols = counts.keys()
         return (symbols, np.array([[counts[i][j]/tots[i] for j in symbols] for i in symbols]))
 
 # TODO arithemetic codes: separate the model from the coding mechanism
+# TDOO lempel-ziv
 
