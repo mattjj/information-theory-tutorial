@@ -4,7 +4,7 @@ from numpy import log2, ceil
 import abc
 from collections import defaultdict, OrderedDict
 from heapq import heappush, heappop, heapify
-from itertools import izip, tee
+from itertools import izip, izip_longest, tee
 
 from prob import FiniteRandomVariable
 
@@ -12,8 +12,9 @@ from prob import FiniteRandomVariable
 #  util  #
 ##########
 
-def blockify(seq,blocklen):
-    return [seq[i:i+blocklen] for i in xrange(len(seq)//blocklen)]
+def blockify(seq,blocklen,fill=None):
+    args = [iter(seq)]*blocklen
+    return izip_longest(*args,fillvalue=fill)
 
 def huffman(X):
     p = X.pmf
@@ -59,7 +60,7 @@ class ModelBasedCode(Code):
 
     @classmethod
     def fit_and_compress(cls,seq,blocklen=1):
-        seq = blockify(seq,blocklen)
+        seq = list(blockify(seq,blocklen))
         code = cls.fit(seq)
         result = ''.join(code.compress(seq))
 
