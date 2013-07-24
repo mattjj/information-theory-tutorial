@@ -17,3 +17,6 @@ seq = process.generate_sequence(10000)
 IIDCode.fit_and_compress(seq,blocklen=1)
 IIDCode.fit_and_compress(seq,blocklen=2)
 
+# TODO show coding with the wrong source model and its relationship to KL
+# and predictive likelihood
+
