@@ -18,7 +18,7 @@ def blockify(seq,blocklen):
 def huffman(X):
     p = X.pmf
 
-    queue = [(p(x),(x,),('',)) for x in X.support()]
+    queue = [(p(x),(x,),('',)) for x in X.range()]
     heapify(queue)
 
     while len(queue) > 1:

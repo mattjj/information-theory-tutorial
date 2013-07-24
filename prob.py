@@ -27,11 +27,11 @@ class FiniteRandomVariable(object):
         else:
             return 0
 
-    def support(self):
+    def range(self):
         return self._pmf.keys()
 
     def sample(self,N=1):
-        return choice(self.support(),N,p=self._pmf.values())
+        return choice(self.range(),N,p=self._pmf.values())
 
 ######################################################
 #  entropy and relative entropy of random variables  #
@@ -39,11 +39,11 @@ class FiniteRandomVariable(object):
 
 def H(X):
     p = X.pmf
-    return sum(-p(x) * log2(p(x)) for x in X.support())
+    return sum(-p(x) * log2(p(x)) for x in X.range())
 
 def D(X,Y):
     p,q = X.pmf, Y.pmf
-    return sum(p(x) * (log2(p(x)) - log2(q(x))) for x in X.support())
+    return sum(p(x) * (log2(p(x)) - log2(q(x))) for x in X.range())
 
 ###############
 #  processes  #
