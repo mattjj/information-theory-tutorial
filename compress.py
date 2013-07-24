@@ -1,6 +1,6 @@
 from __future__ import division
 import numpy as np
-from numpy import log2
+from numpy import log2, ceil
 import abc
 from collections import defaultdict, OrderedDict
 from heapq import heappush, heappop, heapify
@@ -66,12 +66,12 @@ class ModelBasedCode(Code):
         print code
 
         N = len(seq)
-        bits_per_input_symbol = log2(len(set(seq)))
+        bits_per_input_symbol = ceil(log2(len(set(seq))))
         inbits = N*bits_per_input_symbol
         outbits = len(result)
-        print '\n%s compression rate: %gx\n    (with blocklength %d, 2^%g symbols, %g bits per symbol)\n' \
-                % (cls.__name__, outbits/inbits,
-                        blocklen, bits_per_input_symbol, outbits/N/blocklen)
+        print '\n%s with block length %d achieved compression rate: %gx\n    (%g bits per raw symbol, %g compressed bits per symbol)\n' \
+                % (cls.__name__, blocklen, outbits/inbits,
+                        bits_per_input_symbol, outbits/N)
 
         return result
 
@@ -169,4 +169,6 @@ class MarkovCode(object):
             tots[s1] += 1
         symbols = counts.keys()
         return (symbols, np.array([[counts[i][j]/tots[i] for j in symbols] for i in symbols]))
+
+# TODO arithemetic codes: separate the model from the coding mechanism
 
