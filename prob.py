@@ -3,6 +3,7 @@ import numpy as np
 from numpy import log2
 from numpy.random import choice
 from numpy.linalg import eig
+import abc
 from collections import deque
 
 np.seterr(divide='ignore')
@@ -48,7 +49,16 @@ def D(X,Y):
 #  processes  #
 ###############
 
-# processes have entropy rates
+class Process(object):
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def generate_sequence(self,N):
+        pass
+
+    @abc.abstractmethod
+    def H_rate(self):
+        pass
 
 def H_rate(process):
     return process.H_rate()
@@ -78,7 +88,7 @@ class MarkovProcess(object):
 
     def generate_sequence(self,N):
         out = deque()
-        state = choice(self._numstates,p=self._pi)
+        state = 0 # by convention, always start in 0
         for n in xrange(N):
             out.append(self._symbols[state])
             state = choice(self._numstates,p=self._P[state])
