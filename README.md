@@ -48,6 +48,12 @@ In [6]: Z = RV({'a':0.5,'b':0.25,'c':0.125,'d':0.125})
 
 In [7]: H(Z)
 Out[7]: 1.75
+
+
+In [8]: W = RV({'a':0,'b':0,'c':1})
+
+In [9]: H(W)
+Out[9]: 0.0
 ```
 
 A special binary random variable class can provide a convenient constructor:
