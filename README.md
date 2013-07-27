@@ -9,9 +9,6 @@ class RV(object):
     def __init__(self,pmf):
         self._pmf = pmf
 
-    def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__,self._pmf)
-
     def pmf(self,x):
         if x in self._pmf:
             return self._pmf[x]
@@ -35,27 +32,23 @@ Here are some examples:
 ```python
 In [1]: X = RV({0:0.5,1:0.5})
 
-In [2]: X
-Out[2]: RV({0: 0.5, 1: 0.5})
+In [2]: H(X)
+Out[2]: 1.0
 
-In [3]: H(X)
-Out[3]: 1.0
+In [3]: Y = RV({0:0.1,1:0.9})
 
-In [4]: Y = RV({0:0.1,1:0.9})
+In [4]: H(Y)
+Out[4]: 0.46899559358928122
 
-In [5]: H(Y)
-Out[5]: 0.46899559358928122
+In [5]: Z = RV({'a':0.5,'b':0.25,'c':0.125,'d':0.125})
 
-In [6]: Z = RV({'a':0.5,'b':0.25,'c':0.125,'d':0.125})
+In [6]: H(Z)
+Out[6]: 1.75
 
-In [7]: H(Z)
-Out[7]: 1.75
+In [7]: W = RV({'a':0,'b':0,'c':1})
 
-
-In [8]: W = RV({'a':0,'b':0,'c':1})
-
-In [9]: H(W)
-Out[9]: 0.0
+In [8]: H(W)
+Out[8]: 0.0
 ```
 
 A special binary random variable class can provide a convenient constructor:
