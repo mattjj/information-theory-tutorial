@@ -173,10 +173,10 @@ In [1]: process = MarkovProcess(('a','b','c','d'),
   ....:                   [  0,0.1,0.8,0.1],
   ....:                   [  0,  0,0.1,0.9]]))
 
-In [2]: ''.join(process.sample_sequence(50))
+In [2]: process.sample_sequence(50)
 Out[2]: 'aaaaaaaaaaaaaaaaaaaaaabbbbbcccccccccccccdddddddddd'
 
-In [3]: ''.join(process.sample_sequence(75))
+In [3]: process.sample_sequence(75)
 Out[3]: 'aaaaaaaaabbccccccddddcccccbbbbbbbbbbbaaabbbcccbbaaaaaaaaaaaaaaaaaaaaabbcccc'
 ```
 
