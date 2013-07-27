@@ -13,7 +13,7 @@ import util
 
 # a finite random variable is specified by a pmf
 
-class FiniteRandomVariable(object):
+class RV(object):
     def __init__(self,pmf):
         self._pmf = pmf
 
@@ -32,17 +32,21 @@ class FiniteRandomVariable(object):
     def sample(self,N=1):
         return choice(self.range(),N,p=self._pmf.values())
 
+class BinaryRV(RV):
+    def __init__(self,p):
+        super(BinaryRV,self).__init__({0:1-p,1:p})
+
 ######################################################
 #  entropy and relative entropy of random variables  #
 ######################################################
 
 def H(X):
     p = X.pmf
-    return sum(-p(x) * log2(p(x)) for x in X.range())
+    return sum(-p(x) * log2(p(x)) for x in X.range() if p(x) > 0)
 
-def D(X,Y):
+def KL(X,Y):
     p,q = X.pmf, Y.pmf
-    return sum(p(x) * (log2(p(x)) - log2(q(x))) for x in X.range())
+    return sum(p(x) * (log2(p(x)) - log2(q(x))) for x in X.range() if p(x) > 0)
 
 ###############
 #  processes  #
@@ -66,7 +70,7 @@ def H_rate(process):
 
 class IIDProcess(object):
     def __init__(self,pmf):
-        self._rv = FiniteRandomVariable(pmf)
+        self._rv = RV(pmf)
 
     def generate_sequence(self,N):
         X = self._rv
@@ -83,6 +87,8 @@ class MarkovProcess(object):
         self._pi = util.steady_state(self._P)
 
     def generate_sequence(self,N):
+        # TODO TODO this is slowwwww
+        # TODO streamify
         out = deque()
         state = 0 # by convention, always start in 0
         for n in xrange(N):
@@ -91,9 +97,7 @@ class MarkovProcess(object):
         return ''.join(str(x) for x in out)
 
     def H_rate(self):
-        P = np.where(self._P != 0, self._P, 1)
-        errs = np.seterr(divide='ignore')
-        out = -self._pi.dot(self._P * log2(P)).sum()
-        np.seterr(**errs)
-        return out
+        P = self._P
+        PlogP = np.where(P != 0, P * log2(P), 0)
+        return -self._pi.dot(PlogP).sum()
 
