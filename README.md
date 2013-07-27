@@ -175,6 +175,10 @@ In [4]: H_rate(process)
 Out[4]: 0.69546184423832147
 ```
 
+That Markov chain is so predictable that its
+entropy rate is less than a single bit per symbol,
+even though there are 4 possible symbols.
+
 ## Compressing by Fitting Probabilistic Models ##
 
 This code is in `compress.py`.
