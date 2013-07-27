@@ -170,6 +170,9 @@ Out[2]: 'aaaaaaaaaaaaaaaaaaaaaabbbbbcccccccccccccdddddddddd'
 
 In [3]: process.sample_sequence(75)
 Out[3]: 'aaaaaaaaabbccccccddddcccccbbbbbbbbbbbaaabbbcccbbaaaaaaaaaaaaaaaaaaaaabbcccc'
+
+In [4]: H_rate(process)
+Out[4]: 0.69546184423832147
 ```
 
 ## Compressing by Fitting Probabilistic Models ##
