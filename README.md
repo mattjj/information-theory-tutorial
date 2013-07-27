@@ -80,6 +80,8 @@ In [4]: plt.ylabel('Entropy (bits)')
 
 ## Processes and Entropy Rates ##
 
+This code is also in `prob.py`.
+
 A discrete-time stochastic process is just a sequence of (possibly dependent)
 random variables, one for each time step. A useful process object will be able
 to generate a random sequence and also report its entropy rate.
@@ -163,7 +165,6 @@ class MarkovProcess(Process):
 ```
 
 ```python
-
 In [1]: process = MarkovProcess(('a','b','c','d'),
   ....:         np.array([[0.9,0.1,  0,  0],
   ....:                   [0.1,0.8,0.1,  0],
@@ -173,13 +174,19 @@ In [1]: process = MarkovProcess(('a','b','c','d'),
 In [2]: ''.join(process.sample_sequence(50))
 Out[2]: 'aaaaaaaaaaaaaaaaaaaaaabbbbbcccccccccccccdddddddddd'
 
-In [3]: ''.join(process.sample_sequence(100))
-Out[3]: 'aaaaaaaaabbccccccddddcccccbbbbbbbbbbbaaabbbcccbbaaaaaaaaaaaaaaaaaaaaabbcccccccdcbbbbbbbabbbbbbbbbbbb'
+In [3]: ''.join(process.sample_sequence(75))
+Out[3]: 'aaaaaaaaabbccccccddddcccccbbbbbbbbbbbaaabbbcccbbaaaaaaaaaaaaaaaaaaaaabbcccc'
 ```
 
-## Compressing with Probabilistic Models ##
+## Compressing by Fitting Probabilistic Models ##
 
 This code is in `compress.py`.
 
-TODO
+TODO Huffman
+
+## Compressing Without Fitting Models ##
+
+This code is also in `compress.py`.
+
+TODO Lempel-Ziv
 
