@@ -113,7 +113,6 @@ class IIDProcess(Process):
         while True:
             yield sample(X.range(),p=X._pmf.values())
 
-
     def H_rate(self):
         return H(self._rv)
 ```
