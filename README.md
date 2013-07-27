@@ -2,7 +2,7 @@
 
 This code is in `prob.py`.
 
-A finite random variable is specified by a pmf:
+A finite random variable is specified by a probabilityi mass function (PMF):
 
 ```python
 class RV(object):
@@ -176,7 +176,189 @@ Out[3]: 'aaaaaaaaabbccccccddddcccccbbbbbbbbbbbaaabbbcccbbaaaaaaaaaaaaaaaaaaaaabb
 
 This code is in `compress.py`.
 
-TODO Huffman, arithmetic
+If we have a probabilistic model for a process then we can design a good code
+for it, where "good" means "short codeword lengths on average". The entropy
+rate of the process  gives a lower bound on the average codeword length.
+
+For an IID process, we just need a probabilistic model for its underlying
+random variable (i.e. an estimate of the underlying PMF), and the entropy rate
+is just the entropy of that random variable. Given such a model, there is a
+simple greedy algorithm that yields an optimal prefix code (asymptotically with
+long block lengths); it's called the Huffman algorithm.
+
+```python
+def huffman(X):
+    p = X.pmf
+
+    # make a queue of symbols that we'll group together as we build the tree
+    queue = [(p(x),(x,)) for x in X.range()]
+    heapify(queue)
+    # the initial codes are all empty
+    codes = {x:'' for x in X.range()}
+
+    while len(queue) > 1:
+        # take the two lowest probability (grouped) symbols
+        p1, symbols1 = heappop(queue)
+        p2, symbols2 = heappop(queue)
+
+        # add a bit to each symbol group's codes
+        for s in symbols1:
+            codes[s] = '0' + codes[s]
+        for s in symbols2:
+            codes[s] = '1' + codes[s]
+
+        # merge the two groups and push them back to the queue
+        heappush(queue, (p1+p2, symbols1+symbols2))
+
+    # return them ordered by code length
+    return OrderedDict(sorted(codes.items(),key=lambda x: len(x[1])))
+```
+
+```python
+In [1]: X = RV({'a':0.5,'b':0.25,'c':0.125,'d':0.125})
+
+In [2]: huffman(X)
+Out[2]: OrderedDict([('a', '0'), ('b', '10'), ('c', '110'), ('d', '111')])
+
+In [3]: codebook = huffman(X)
+
+In [4]: p = X.pmf
+
+In [5]: sum(p(x)*len(code) for x,code in codebook.items())
+Out[5]: 1.75
+
+In [6]: H(X)
+Out[6]: 1.75
+```
+
+More generally, a code is something that can compress and decompress, and a
+model-based code gives a way to construct a code based on fitting a
+probabilistic model to the data to be compressed:
+
+```python
+class Code(object):
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def compress(self,seq):
+        pass
+
+    @abc.abstractmethod
+    def decompress(self,bitstring):
+        pass
+
+
+class ModelBasedCode(Code):
+    __metaclass__ = abc.ABCMeta
+
+    @classmethod
+    @abc.abstractmethod
+    def fit(cls,seq,blocklen=1):
+        pass
+
+
+class IIDCode(ModelBasedCode):
+    def __init__(self,codebook):
+        self.codebook = codebook
+        self.inv_codebook = {v:k for k,v in codebook.iteritems()}
+
+    def compress(self,seq):
+        for s in seq:
+            yield self.codebook[s]
+
+    def decompress(self,bits):
+        bits = iter(bits)
+        while True:
+            yield self.consume_next(self.inv_codebook,bits)
+
+    @staticmethod
+    def consume_next(inv_codebook,bits):
+        # NOTE: prefix-free is important here!
+        bitbuf = ''
+        for bit in bits:
+            bitbuf += bit
+            if bitbuf in inv_codebook:
+                return inv_codebook[bitbuf]
+        assert len(bitbuf) == 0
+        raise StopIteration
+
+    def __repr__(self):
+        return self.__class__.__name__ + '\n' + \
+                '\n'.join('%s -> %s' % (symbol, code)
+                        for symbol, code in self.codebook.iteritems())
+
+    @classmethod
+    def fit(cls,seq):
+        model = cls.estimate_iid_source(seq)
+        return cls.from_rv(model)
+
+    @classmethod
+    def from_rv(cls,X):
+        return cls(huffman(X))
+
+    @staticmethod
+    def estimate_iid_source(seq):
+        counts = defaultdict(int)
+        tot = 0
+        for symbol in seq:
+            counts[symbol] += 1
+            tot += 1
+        pmf = {symbol:count/tot for symbol, count in counts.iteritems()}
+        return RV(pmf)
+```
+
+```python
+In [1]: true_process = IIDProcess({'a':0.6,'b':0.2,'c':0.1,'d':0.1})
+
+In [2]: H_rate(true_process)
+Out[2]: 1.5709505944546687
+
+In [3]: seq = true_process.sample_sequence(20000)
+
+In [4]: IIDCode.fit(seq)
+Out[4]:
+IIDCode
+a -> 1
+b -> 00
+c -> 011
+d -> 010
+
+In [5]: ''.join(IIDCode.fit(seq).compress(seq))[:50]
+Out[5]: '11110000100001101111101001111110011110011110100101'
+
+In [6]: IIDCode.fit_and_compress(seq) # convenience method with a report
+IIDCode
+a -> 1
+b -> 00
+c -> 011
+d -> 010
+
+IIDCode with block length 1 achieved compression rate: 0.80435x
+    (2 bits per raw symbol, 1.6087 compressed bits per symbol)
+
+In [7]: IIDCode.fit_and_compress(seq,blocklen=2)
+
+IIDCode
+aa -> 11
+ab -> 100
+ba -> 011
+ac -> 0101
+bb -> 0001
+ca -> 1011
+da -> 0100
+ad -> 1010
+bd -> 00101
+bc -> 00110
+cb -> 00100
+db -> 00000
+cc -> 001111
+dc -> 000011
+cd -> 001110
+dd -> 000010
+
+IIDCode with block length 2 achieved compression rate: 0.80435x
+    (4 bits per raw symbol, 3.2174 compressed bits per symbol)
+```
 
 ## Compressing Without Fitting Models ##
 
