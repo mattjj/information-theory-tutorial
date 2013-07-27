@@ -2,7 +2,7 @@
 
 This code is in `prob.py`.
 
-A finite random variable is specified by a probabilityi mass function (PMF):
+A finite random variable is specified by a probability mass function (PMF):
 
 ```python
 class RV(object):
