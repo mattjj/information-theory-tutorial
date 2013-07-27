@@ -160,8 +160,9 @@ class MarkovProcess(Process):
 
     def H_rate(self):
         P = self._P
-        PlogP = np.where(P != 0, P * log2(P), 0)
+        PlogP = P*log2(np.where(P != 0, P, 1))
         return -self._pi.dot(PlogP).sum()
+
 ```
 
 ```python
@@ -182,7 +183,7 @@ Out[3]: 'aaaaaaaaabbccccccddddcccccbbbbbbbbbbbaaabbbcccbbaaaaaaaaaaaaaaaaaaaaabb
 
 This code is in `compress.py`.
 
-TODO Huffman
+TODO Huffman, arithmetic
 
 ## Compressing Without Fitting Models ##
 
