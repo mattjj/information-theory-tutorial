@@ -464,8 +464,6 @@ MarkovCode with block length 1 achieved compression rate: 0.59775x
     (2 bits per raw symbol, 1.1955 compressed bits per symbol)
 ```
 
-I'm not sure why that didn't compress better...
-
 ## Compressing Without Fitting Models ##
 
 This code is also in `compress.py`.
