@@ -74,7 +74,7 @@ In [3]: plt.xlabel('p')
 In [4]: plt.ylabel('Entropy (bits)')
 ```
 
-![](writeup.figure_1.png)
+![](writeup/figure_1.png)
 
 ## Processes and Entropy Rates ##
 
