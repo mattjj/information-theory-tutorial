@@ -20,17 +20,28 @@ def blockify(seq,blocklen,fill=None):
 def huffman(X):
     p = X.pmf
 
-    queue = [(p(x),(x,),('',)) for x in X.range()]
+    # make a queue of symbols that we'll group together as we build the tree
+    queue = [(p(x),(x,)) for x in X.range()]
     heapify(queue)
+    # the initial codes are all empty
+    codes = {x:'' for x in X.range()}
 
     while len(queue) > 1:
-        p2, symbols1, codes1 = heappop(queue)
-        p1, symbols2, codes2 = heappop(queue)
-        heappush(queue, (p1+p2, symbols1+symbols2,
-            ['0' + c for c in codes1] + ['1' + c for c in codes2]))
+        # take the two lowest probability (grouped) symbols
+        p1, symbols1 = heappop(queue)
+        p2, symbols2 = heappop(queue)
 
-    _, symbols, codes = queue[0]
-    return OrderedDict(sorted(zip(symbols, codes),key=lambda x: len(x[1])))
+        # add a bit to each symbol group's codes
+        for s in symbols1:
+            codes[s] = '0' + codes[s]
+        for s in symbols2:
+            codes[s] = '1' + codes[s]
+
+        # merge the two groups and push them back to the queue
+        heappush(queue, (p1+p2, symbols1+symbols2))
+
+    # return them ordered by code length
+    return OrderedDict(sorted(codes.items(),key=lambda x: len(x[1])))
 
 ###########
 #  codes  #
