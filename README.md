@@ -81,36 +81,55 @@ In [4]: plt.ylabel('Entropy (bits)')
 ## Processes and Entropy Rates ##
 
 A discrete-time stochastic process is just a sequence of (possibly dependent)
-random variables, one for each time step. A simple process is just a sequence
-of independent and identically distributed (IID) random variables.
-
-A useful process object will be able to generate a random sequence and also
-report its entropy rate. An entropy rate for an IID process is just the entropy
-of its underlying random variable:
+random variables, one for each time step. A useful process object will be able
+to generate a random sequence and also report its entropy rate.
 
 ```python
-class IIDProcess(object):
-    def __init__(self,pmf):
-        self._rv = RV(pmf)
+class Process(object):
+    __metaclass__ = abc.ABCMeta
 
-    def generate_sequence(self,N):
-        X = self._rv
-        return ''.join(str(x) for x in X.sample(N))
+    def sample_sequence(self,N):
+        return ''.join(islice(self.sequence_generator(),N))
 
+    @abc.abstractmethod
+    def sequence_generator(self):
+        pass
+
+    @abc.abstractmethod
     def H_rate(self):
-        return H(self._rv)
+        pass
+
 
 def H_rate(process):
     return process.H_rate()
 ```
 
+A simple process is just a sequence of independent and identically distributed
+(IID) random variables. An entropy rate for an IID process is just the entropy
+of its underlying random variable:
+
+```python
+class IIDProcess(Process):
+    def __init__(self,pmf):
+        self._rv = RV(pmf)
+
+    def sequence_generator(self):
+        X = self._rv
+        while True:
+            yield sample(X.range(),p=X._pmf.values())
+
+
+    def H_rate(self):
+        return H(self._rv)
+```
+
 ```python
 In [1]: X = IIDProcess({'a':0.2,'b':0.8})
 
-In [2]: X.generate_sequence(20)
+In [2]: X.sample_sequence(20)
 Out[2]: 'bbbbaabbbbbbbbabbbbb'
 
-In [3]: X.generate_sequence(50)
+In [3]: X.sample_sequence(50)
 Out[3]: 'bbbbbabbbbbbabbbbbbbbbbbabbbbbabbbbbabbbbbbbbbabbb'
 
 In [4]: H_rate(X)
@@ -124,20 +143,18 @@ A slightly more interesting process is a Markov process, where the probability
 of a symbol depends on the previous symbol, so there's a PMF for each symbol.
 
 ```python
-class MarkovProcess(object):
+class MarkovProcess(Process):
     def __init__(self,symbols,trans):
         self._symbols = symbols
         self._numstates = len(symbols)
         self._P = np.asarray(trans)
         self._pi = util.steady_state(self._P)
 
-    def generate_sequence(self,N):
-        out = deque()
-        state = choice(self._numstates,p=self._pi)
-        for n in xrange(N):
-            out.append(self._symbols[state])
-            state = choice(self._numstates,p=self._P[state])
-        return ''.join(str(x) for x in out)
+    def sequence_generator(self):
+        state = sample(self._numstates,p=self._pi)
+        while True:
+            yield self._symbols[state]
+            state = sample(self._numstates,p=self._P[state])
 
     def H_rate(self):
         P = self._P
@@ -153,13 +170,16 @@ In [1]: process = MarkovProcess(('a','b','c','d'),
   ....:                   [  0,0.1,0.8,0.1],
   ....:                   [  0,  0,0.1,0.9]]))
 
-In [2]: process.generate_sequence(50)
+In [2]: ''.join(process.sample_sequence(50))
 Out[2]: 'aaaaaaaaaaaaaaaaaaaaaabbbbbcccccccccccccdddddddddd'
 
-In [3]: process.generate_sequence(100)
+In [3]: ''.join(process.sample_sequence(100))
 Out[3]: 'aaaaaaaaabbccccccddddcccccbbbbbbbbbbbaaabbbcccbbaaaaaaaaaaaaaaaaaaaaabbcccccccdcbbbbbbbabbbbbbbbbbbb'
 ```
 
 ## Compressing with Probabilistic Models ##
 
+This code is in `compress.py`.
+
+TODO
 
