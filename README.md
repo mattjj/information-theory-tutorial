@@ -335,29 +335,6 @@ d -> 010
 
 IIDCode with block length 1 achieved compression rate: 0.80435x
     (2 bits per raw symbol, 1.6087 compressed bits per symbol)
-
-In [7]: IIDCode.fit_and_compress(seq,blocklen=2)
-
-IIDCode
-aa -> 11
-ab -> 100
-ba -> 011
-ac -> 0101
-bb -> 0001
-ca -> 1011
-da -> 0100
-ad -> 1010
-bd -> 00101
-bc -> 00110
-cb -> 00100
-db -> 00000
-cc -> 001111
-dc -> 000011
-cd -> 001110
-dd -> 000010
-
-IIDCode with block length 2 achieved compression rate: 0.80435x
-    (4 bits per raw symbol, 3.2174 compressed bits per symbol)
 ```
 
 ## Compressing Without Fitting Models ##
