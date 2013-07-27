@@ -142,7 +142,9 @@ Out[5]: 1.0
 ```
 
 A slightly more interesting process is a Markov process, where the probability
-of a symbol depends on the previous symbol, so there's a PMF for each symbol.
+of a symbol depends on the previous symbol, so there's a transition matrix `P`
+where `P[i,j]` is the probability of going to the symbol at index `j` from the
+symbol at index `i`.
 
 ```python
 class MarkovProcess(Process):
@@ -162,7 +164,6 @@ class MarkovProcess(Process):
         P = self._P
         PlogP = P*log2(np.where(P != 0, P, 1))
         return -self._pi.dot(PlogP).sum()
-
 ```
 
 ```python
