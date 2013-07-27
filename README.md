@@ -337,6 +337,133 @@ IIDCode with block length 1 achieved compression rate: 0.80435x
     (2 bits per raw symbol, 1.6087 compressed bits per symbol)
 ```
 
+We can do something similar with Markov processes by creating a Huffman code
+for each symbol (that is, for each row of the transition matrix):
+
+```python
+class MarkovCode(ModelBasedCode):
+    def __init__(self,firstcodebook,codebooks):
+        self.firstcode = IIDCode(firstcodebook)
+        self.iid_codes = {symbol:IIDCode(codebook)
+                for symbol, codebook in codebooks.iteritems()}
+
+    def compress(self,seq):
+        s1, s2 = tee(seq,2)
+        firstsymbol = next(s2)
+        yield self.firstcode.codebook[firstsymbol]
+        for a,b in izip(s1,s2):
+            yield self.iid_codes[a].codebook[b] 
+
+    def decompress(self,bits):
+        bits = iter(bits)
+        symbol = IIDCode.consume_next(self.firstcode.inv_codebook,bits)
+        while True:
+            yield symbol
+            symbol = IIDCode.consume_next(self.iid_codes[symbol].inv_codebook,bits)
+
+    def __repr__(self):
+        return self.__class__.__name__ + '\n' + \
+                '\n'.join('Code after seeing %s:\n%s' % (symbol,iidcode)
+                        for symbol, iidcode in self.iid_codes.iteritems())
+
+    @classmethod
+    def fit(cls,seq):
+        model = cls.estimate_markov_source(seq)
+        return cls.from_markovchain(model)
+
+    @classmethod
+    def from_markovchain(cls,(symbols,pi,P)):
+        return cls(huffman(RV(dict(zip(symbols,pi)))),
+                {s:huffman(RV(dict(zip(symbols,dist))))
+            for s,dist in zip(symbols,P)})
+
+    @staticmethod
+    def estimate_markov_source(seq):
+        s1, s2 = tee(seq,2)
+        next(s2)
+        counts = defaultdict(lambda: defaultdict(int))
+        tots = defaultdict(int)
+        for a,b in izip(s1,s2):
+            counts[a][b] += 1
+            tots[a] += 1
+        symbols = counts.keys()
+        P = np.array([[counts[i][j]/tots[i] for j in symbols] for i in symbols])
+        pi = util.steady_state(P)
+        return (symbols, pi, P)
+```
+
+```python
+In [1]: process = MarkovProcess(('a','b','c','d'),
+  ....:         np.array([[0.9,0.1,  0,  0],
+  ....:                   [0.1,0.8,0.1,  0],
+  ....:                   [  0,0.1,0.8,0.1],
+  ....:                   [  0,  0,0.1,0.9]]))
+
+In [2]: H_rate(process)
+Out[2]: 0.695462
+
+In [3]: seq = process.sample_sequence(20000)
+
+In [4]: IIDCode.fit_and_compress(seq)
+
+IIDCode
+a -> 01
+c -> 10
+b -> 00
+d -> 11
+
+IIDCode with block length 1 achieved compression rate: 1x
+    (2 bits per raw symbol, 2 compressed bits per symbol)
+
+In [5]: IIDCode.fit_and_compress(seq,blocklen=2)
+
+IIDCode
+aa -> 01
+cc -> 00
+dd -> 10
+bb -> 111
+bc -> 11001
+cd -> 11000
+ab -> 110100
+ba -> 110101
+cb -> 110111
+dc -> 110110
+
+IIDCode with block length 2 achieved compression rate: 0.683725x
+    (4 bits per raw symbol, 2.7349 compressed bits per symbol)
+
+In [6]: MarkovCode.fit_and_compress(seq)
+
+MarkovCode
+Code after seeing a:
+IIDCode
+a -> 1
+b -> 01
+c -> 000
+d -> 001
+Code after seeing c:
+IIDCode
+c -> 1
+b -> 01
+a -> 000
+d -> 001
+Code after seeing b:
+IIDCode
+b -> 1
+c -> 01
+a -> 001
+d -> 000
+Code after seeing d:
+IIDCode
+d -> 1
+c -> 01
+a -> 000
+b -> 001
+
+MarkovCode with block length 1 achieved compression rate: 0.59775x
+    (2 bits per raw symbol, 1.1955 compressed bits per symbol)
+```
+
 ## Compressing Without Fitting Models ##
 
 This code is also in `compress.py`.
