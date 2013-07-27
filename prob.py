@@ -1,9 +1,10 @@
 from __future__ import division
 import numpy as np
 from numpy import log2
-from numpy.random import choice
+from numpy.random import choice as sample
 import abc
 from collections import deque
+from itertools import islice
 
 import util
 
@@ -29,9 +30,6 @@ class RV(object):
     def range(self):
         return self._pmf.keys()
 
-    def sample(self,N=1):
-        return choice(self.range(),N,p=self._pmf.values())
-
 class BinaryRV(RV):
     def __init__(self,p):
         super(BinaryRV,self).__init__({0:1-p,1:p})
@@ -55,8 +53,11 @@ def KL(X,Y):
 class Process(object):
     __metaclass__ = abc.ABCMeta
 
+    def sample_sequence(self,N):
+        return ''.join(islice(self.sequence_generator(),N))
+
     @abc.abstractmethod
-    def generate_sequence(self,N):
+    def sequence_generator(self):
         pass
 
     @abc.abstractmethod
@@ -68,36 +69,38 @@ def H_rate(process):
 
 # an iid process is just a wrapped random variable
 
-class IIDProcess(object):
+class IIDProcess(Process):
     def __init__(self,pmf):
         self._rv = RV(pmf)
 
-    def generate_sequence(self,N):
+    def sequence_generator(self):
         X = self._rv
-        return ''.join(str(x) for x in X.sample(N))
+        while True:
+            yield sample(X.range(),p=X._pmf.values())
 
     def H_rate(self):
         return H(self._rv)
 
-class MarkovProcess(object):
+    # for efficiency
+    def sample_sequence(self,N):
+        X = self._rv
+        return sample(X.range(),N,p=X._pmf.values())
+
+class MarkovProcess(Process):
     def __init__(self,symbols,trans):
         self._symbols = symbols
         self._numstates = len(symbols)
         self._P = np.asarray(trans)
         self._pi = util.steady_state(self._P)
 
-    def generate_sequence(self,N):
-        # TODO TODO this is slowwwww
-        # TODO streamify
-        out = deque()
-        state = 0 # by convention, always start in 0
-        for n in xrange(N):
-            out.append(self._symbols[state])
-            state = choice(self._numstates,p=self._P[state])
-        return ''.join(str(x) for x in out)
+    def sequence_generator(self):
+        state = sample(self._numstates,p=self._pi)
+        while True:
+            yield self._symbols[state]
+            state = sample(self._numstates,p=self._P[state])
 
     def H_rate(self):
         P = self._P
-        PlogP = np.where(P != 0, P * log2(P), 0)
+        PlogP = P*log2(np.where(P != 0, P, 1))
         return -self._pi.dot(PlogP).sum()
 

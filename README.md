@@ -1,5 +1,7 @@
 ## Random Variables and Entropy ##
 
+This code is in `prob.py`.
+
 A finite random variable is specified by a pmf:
 
 ```python
@@ -157,3 +159,7 @@ Out[2]: 'aaaaaaaaaaaaaaaaaaaaaabbbbbcccccccccccccdddddddddd'
 In [3]: process.generate_sequence(100)
 Out[3]: 'aaaaaaaaabbccccccddddcccccbbbbbbbbbbbaaabbbcccbbaaaaaaaaaaaaaaaaaaaaabbcccccccdcbbbbbbbabbbbbbbbbbbb'
 ```
+
+## Compressing with Probabilistic Models ##
+
+
